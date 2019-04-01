@@ -1,9 +1,8 @@
 import urllib.request
 import sys
 import numbers
-import time
-import threading
 import os
+from .. import logger
 
 
 def fancy_bytes_format(bytes):
@@ -35,15 +34,7 @@ def rm_url_trailing_trash_characters(raw_url):
     return raw_url[0:endOfUrlIdx]
 
 
-class Logger:
-    def __init__(self):
-        pass
-
-    def log(msg):
-        sys.stdout.write(time.asctime() + "\n" + msg + "\n")
-
-
-def download_file(url):
+def downloader(url):
     url = rm_url_trailing_trash_characters(url)
     if len(url) == 0:
         return
@@ -55,7 +46,8 @@ def download_file(url):
     with urllib.request.urlopen(url) as response:
         # info of file
         content_len = int(response.getheader("Content-Length"))
-        Logger.log("file @name: {0}, @size: {1}".format(
+        log = logger.Logger()
+        log.log("file @name: {0}, @size: {1}".format(
             file_name, fancy_bytes_format(content_len)))
         # download procedure
         sizeOfWritten = 0
@@ -76,27 +68,14 @@ def download_file(url):
             sys.stdout.flush()
 
 
-class File_downloader(threading.Thread):
-    def __init__(self, url):
-        super(File_downloader, self).__init__()
-        self.url = url
-
-    def run(self):
-        download_file(self.url)
-
-
+# usage
+# url = """\
 # http://mirrors.us.kernel.org/ubuntu-releases/18.04.2/ubuntu-18.04.2-live-server-amd64.iso
-# https://github.com/francissuen/fsCMake/releases/download/v1.0.3/fsCMake.tar.xz
-url = """\
-http://mirrors.us.kernel.org/ubuntu-releases/18.04.2/ubuntu-18.04.2-live-server-amd64.iso
-"""
-fd = File_downloader(url)
+# """
+# d = Downloader(url)
 
-fd.start()
+# d.start()
 
-fd.join()
-
-# dependencies =
-# [
-#     ""
-# ]
+# d = DownloaderAsync(url)
+# d.start()
+# d.join()
