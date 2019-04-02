@@ -2,46 +2,60 @@ import urllib.request
 import sys
 import numbers
 import os
+import os.path
 from .. import logger
 
 
-def fancy_bytes_format(bytes):
-    if not isinstance(bytes, numbers.Number):
+def fancy_bytes_format(size_in_b):
+    if not isinstance(size_in_b, numbers.Number):
         return
     KB = 1024
     MB = 1024 * KB
     G = 1024 * MB
-    unit, scale = "B", bytes
-    if bytes > G:
+    unit, scale = "B", size_in_b
+    if size_in_b > G:
         unit = "G"
-        scale = bytes / G
-    elif bytes > MB:
+        scale = size_in_b / G
+    elif size_in_b > MB:
         unit = "MB"
-        scale = bytes / MB
-    elif bytes > KB:
+        scale = size_in_b / MB
+    elif size_in_b > KB:
         unit = "KB"
-        scale = bytes / KB
+        scale = size_in_b / KB
     return "{0:06.2f} {1}".format(scale, unit)
 
 
-def rm_url_trailing_trash_characters(raw_url):
+def rm_url_trash_characters(raw_url):
     trash_characters = "\n "
-    endOfUrlIdx = -1
-    for i in range(-1, -len(raw_url), -1):
-        if trash_characters.count(raw_url[i]) == 0:
-            endOfUrlIdx = i + 1  # include last one
-            break
-    return raw_url[0:endOfUrlIdx]
+    ret = ""
+    for c in raw_url:
+        if trash_characters.count(c) == 0:
+            ret += c
+    return ret
 
 
-def downloader(url):
-    url = rm_url_trailing_trash_characters(url)
+def downloader(url, dst_dir=None, dst_name=None):
+    url = rm_url_trash_characters(url)
     if len(url) == 0:
-        return
-    file_name = url.split('/')[-1]
+        return None
+
+    if dst_dir is None:
+        abs_dst_dir = os.getcwd()
+    else:
+        abs_dst_dir = os.path.abspath(dst_dir)
+        if not os.path.isdir(abs_dst_dir):
+            os.mkdir(abs_dst_dir)
+
+    if dst_name is None:
+        file_name = url.split('/')[-1]
+    else:
+        file_name = dst_name
+
+    file_name = abs_dst_dir + os.sep + file_name
+
     if len(file_name) == 0:
-        return
-    print(url)
+        return None
+
     # open url
     with urllib.request.urlopen(url) as response:
         # info of file
@@ -64,8 +78,8 @@ def downloader(url):
 
             f.flush()
             os.rename(tmp_file_name, file_name)
-            sys.stdout.write("written to file @name: {0}\n".format(file_name))
             sys.stdout.flush()
+            return file_name
 
 
 # usage
