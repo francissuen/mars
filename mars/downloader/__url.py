@@ -77,6 +77,7 @@ def downloader(url, dst_dir=None, dst_name=None):
                 sys.stdout.flush()
 
             f.flush()
+            f.close()
             os.rename(tmp_file_name, file_name)
             sys.stdout.flush()
             return file_name
