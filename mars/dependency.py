@@ -88,6 +88,8 @@ class DepSolution:
 default_dep_sln = DepSolution(DepMethod(__fixer_download, 0),
                               DepMethod(__fixer_extract, 1))
 
+default_dep_sln.add_method = None  # disable further adding method
+
 
 class Dependency:
     def __init__(self):
@@ -97,6 +99,9 @@ class Dependency:
         if dep_sln is None:
             dep_sln = default_dep_sln
         self.__deps[dep_info] = dep_sln
+
+    def get_solution(self, dep_info):
+        return self.__deps[dep_info]
 
     def fix(self):
         sorted_deps = sorted(self.__deps.items(), key=lambda kv: kv[0])
