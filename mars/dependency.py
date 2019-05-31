@@ -7,6 +7,8 @@ Dependency: map a DepInfo with a specific DepSolution
 from . import downloader
 import tarfile
 import os.path
+import subprocess
+import shutil
 from . import logger
 
 
@@ -46,6 +48,37 @@ def __fixer_download(dep_info):
     lg.log("dependency @name: {0} has been downloaded."
            .format(dep_info.name))
     dep_info.last_dep_method_ret = retFile
+
+
+def __fixer_fs_git_proj_download_method(dep_info):
+    old_cwd = os.getcwd()
+    if not os.path.isdir("dep_tmp"):
+        os.mkdir("dep_tmp")
+    os.chdir("dep_tmp")
+    
+    if os.path.isdir(dep_info.name):
+        os.chdir(dep_info.name)  # cd to target dir
+        # git update local repository
+        subprocess.run(["git", "pull", "origin", "master"])
+    else:
+        subprocess.run(["git", "clone", dep_info.addr])  # clone git repository
+        os.chdir(dep_info.name)                          
+        subprocess.run(["git", "checkout", "master"])    # checkout master
+        
+    subprocess.run(["python3", "setup.py"])          # run setup.py
+    shutil.copy("fsCMake/build.sh", ".")
+    subprocess.run(["./build.sh", "-p"])
+    src_path = dep_info.name + ".tar.xz"
+    src_path = os.path.abspath(src_path)
+    if not os.path.isfile(src_path):
+        raise
+
+    os.chdir(old_cwd)           # back to old cwd
+    if not os.path.isdir("thirdParty"):
+        os.mkdir("thirdParty")
+    # copy to thirdParty dir
+    dst_path = shutil.copy(src_path, "thirdParty")  
+    dep_info.last_dep_method_ret = dst_path
 
 
 def __fixer_extract(dep_info):
@@ -89,6 +122,10 @@ default_dep_sln = DepSolution(DepMethod(__fixer_download, 0),
                               DepMethod(__fixer_extract, 1))
 
 default_dep_sln.add_method = None  # disable further adding method
+
+fs_git_proj_dep_sln = DepSolution(
+    DepMethod(__fixer_fs_git_proj_download_method, 0),
+    DepMethod(__fixer_extract, 1))
 
 
 class Dependency:
