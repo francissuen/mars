@@ -78,6 +78,8 @@ def downloader(url, dst_dir=None, dst_name=None):
 
             f.flush()
             f.close()
+            if os.path.isfile(file_name):
+                os.remove(file_name)
             os.rename(tmp_file_name, file_name)
             sys.stdout.flush()
             return file_name
