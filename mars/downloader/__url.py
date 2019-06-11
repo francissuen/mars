@@ -34,38 +34,32 @@ def rm_url_trash_characters(raw_url):
     return ret
 
 
-def downloader(url, dst_dir=None, dst_name=None):
+def downloader(url, dst_path=None):
     url = rm_url_trash_characters(url)
     if len(url) == 0:
         return None
 
-    if dst_dir is None:
-        abs_dst_dir = os.getcwd()
+    if dst_path is None:
+        dst_path = url.split('/')[-1]
+    elif dst_path != '':
+        if os.path.isdir(dst_path):
+            dst_path = os.path.join(dst_path, url.split('/')[-1])
     else:
-        abs_dst_dir = os.path.abspath(dst_dir)
-        if not os.path.isdir(abs_dst_dir):
-            os.mkdir(abs_dst_dir)
-
-    if dst_name is None:
-        file_name = url.split('/')[-1]
-    else:
-        file_name = dst_name
-
-    file_name = abs_dst_dir + os.sep + file_name
-
-    if len(file_name) == 0:
         return None
 
+    if dst_path is None or dst_path == '':
+        return None
+        
     # open url
     with urllib.request.urlopen(url) as response:
         # info of file
         content_len = int(response.getheader("Content-Length"))
         log = logger.Logger()
         log.log("file @name: {0}, @size: {1}".format(
-            file_name, fancy_bytes_format(content_len)))
+            dst_path, fancy_bytes_format(content_len)))
         # download procedure
         sizeOfWritten = 0
-        tmp_file_name = file_name + ".tmp"
+        tmp_file_name = dst_path + ".tmp"
         with open(tmp_file_name, "wb") as f:
             for i in range(0, content_len, 1024):
                 # data[0:1024] = response.read(1024)
@@ -78,11 +72,11 @@ def downloader(url, dst_dir=None, dst_name=None):
 
             f.flush()
             f.close()
-            if os.path.isfile(file_name):
-                os.remove(file_name)
-            os.rename(tmp_file_name, file_name)
+            if os.path.isfile(dst_path):
+                os.remove(dst_path)
+            os.rename(tmp_file_name, dst_path)
             sys.stdout.flush()
-            return file_name
+            return dst_path
 
 
 # usage

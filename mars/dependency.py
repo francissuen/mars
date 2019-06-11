@@ -14,39 +14,22 @@ from . import logger
 
 class DepInfo:
     def __init__(self, dep_info):
-        self.name = dep_info["name"]
-        self.addr = dep_info["addr"]
-        self.dst_dir = dep_info.get("dst_dir", None)
-        self.dst_name = dep_info.get("dst_name", None)
-        self.__seq_num = dep_info.get("seq_num", 0)
+        self.src_path = dep_info["src_path"]
+        self.dst_path = dep_info.get("dst_path", None)
+        self.seq_num = dep_info.get("seq_num", 0)
         self.last_dep_method_ret = None
 
     def __lt__(self, other):
-        return self.__seq_num < other.__seq_num
-
-
-class DepMethod:
-    def __init__(self, method, seq_num=0):
-        self.__seq_num = seq_num
-        self.__dep_method = method
-
-    def set_seq_num(self, new_seq_num):
-        self.__seq_num = new_seq_num
-
-    def __call__(self, dep_info):
-        self.__dep_method(dep_info)
-
-    def __lt__(self, other):
-        return self.__seq_num < other.__seq_num
+        return self.seq_num < other.seq_num
 
 
 def __fixer_download(dep_info):
-    d = downloader.Downloader(dep_info.addr,
-                              dep_info.dst_dir, dep_info.dst_name)
+    d = downloader.Downloader(dep_info.src_path,
+                              dep_info.dst_path)
     retFile = d.start()
     lg = logger.Logger()
     lg.log("dependency @name: {0} has been downloaded."
-           .format(dep_info.name))
+           .format(retFile))
     dep_info.last_dep_method_ret = retFile
 
 
@@ -55,82 +38,98 @@ def __fixer_fs_git_proj_download_method(dep_info):
     if not os.path.isdir("dep_tmp"):
         os.mkdir("dep_tmp")
     os.chdir("dep_tmp")
-    
-    if os.path.isdir(dep_info.name):
-        os.chdir(dep_info.name)  # cd to target dir
+
+    dep_name = dep_info.src_path.split('/')[-1].split('.')[0]
+    if dep_name is None or dep_name == '':
+        raise
+    if os.path.isdir(dep_name):
+        os.chdir(dep_name)  # cd to target dir
         # git update local repository
         subprocess.run(["git", "pull", "origin", "master"])
     else:
-        subprocess.run(["git", "clone", dep_info.addr])  # clone git repository
-        os.chdir(dep_info.name)                          
-        subprocess.run(["git", "checkout", "master"])    # checkout master
-        
+        # clone git repository
+        subprocess.run(["git", "clone", dep_info.src_path])
+        os.chdir(dep_name)
+        subprocess.run(["git", "checkout", "master"])    # TODO checkout master
+
     subprocess.run(["python3", "setup.py"])          # run setup.py
-    shutil.copy("fsCMake/build.sh", ".")
-    subprocess.run(["./build.sh", "-p"])
-    src_path = dep_info.name + ".tar.xz"
-    src_path = os.path.abspath(src_path)
-    if not os.path.isfile(src_path):
+    shutil.copy("fsCMake/build.py", ".")
+    subprocess.run(["python3", 'build.py', "-p"])
+
+    dep_info.last_dep_method_ret = os.path.abspath(dep_name + ".tar.xz")
+    os.chdir(old_cwd)
+
+    
+def __fixer_extract_here(dep_info):
+    tar_file_path = dep_info.last_dep_method_ret
+    if tar_file_path is None:
         raise
-
-    os.chdir(old_cwd)           # back to old cwd
-    if not os.path.isdir("thirdParty"):
-        os.mkdir("thirdParty")
-    # copy to thirdParty dir
-    dst_path = shutil.copy(src_path, "thirdParty")  
-    dep_info.last_dep_method_ret = dst_path
-
-
-def __fixer_extract(dep_info):
-    file_name = dep_info.last_dep_method_ret
-    if file_name is None:
+    if dep_info.dst_path is None:
+        dep_info.dst_path = os.getcwd()
+        print(os.getcwd())
+    if os.path.isdir(dep_info.dst_path):
+        dst_dir = dep_info.dst_path
+    else:
+        dst_dir = os.path.dirname(dep_info.dst_path)
+    if dst_dir is None:
         raise
-    ext = file_name.split(".")[-1]
-    if ext == "gz" or ext == "bz2" or ext == "xz":
-        with tarfile.open(file_name) as f:
+    
+    if tarfile.is_tarfile(tar_file_path):
+        with tarfile.open(tar_file_path) as f:
             old_cwd = os.getcwd()
-            dst_dir = os.path.dirname(file_name)
             os.chdir(dst_dir)
-            if not os.path.exists(dep_info.name):
-                os.mkdir(dep_info.name)
-            os.chdir(dep_info.name)
             f.extractall()
+            os.chdir(old_cwd)
             lg = logger.Logger()
             lg.log("""\
-dependency @name: {0} has been extracted, @path: \"{1}\"."""
-                   .format(dep_info.name,
-                           dst_dir + os.sep + dep_info.name))
-            os.chdir(old_cwd)
+dependency @name: {0} has been extracted."""
+                   .format(tar_file_path))
     else:
         raise
 
 
 class DepSolution:
     def __init__(self, *dep_methods):
-        self.__dep_methods = list(dep_methods)
+        if dep_methods is None:
+            raise
+        self.__dep_methods = {}
+        for dm in dep_methods:
+            if not isinstance(dm, dict):
+                raise
+            self.__dep_methods[dm["seq_num"]] = dm["fixer"]
 
     def __call__(self, dep_info):
-        self.__dep_methods.sort()
-        for dm in self.__dep_methods:
-            dm(dep_info)
+        sorted_dms = sorted(self.__dep_methods.items(), key=lambda kv: kv[0])
+        for dm in sorted_dms:
+            dm[1](dep_info)
 
     def add_method(self, dep_method):
         self.__dep_methods.append(dep_method)
 
 
-default_dep_sln = DepSolution(DepMethod(__fixer_download, 0),
-                              DepMethod(__fixer_extract, 1))
+default_dep_sln = DepSolution({"seq_num": 0, "fixer": __fixer_download},
+                              {"seq_num": 1, "fixer": __fixer_extract_here})
 
 default_dep_sln.add_method = None  # disable further adding method
 
-fs_git_proj_dep_sln = DepSolution(
-    DepMethod(__fixer_fs_git_proj_download_method, 0),
-    DepMethod(__fixer_extract, 1))
+fs_git_proj_dep_sln = DepSolution({"seq_num": 0, "fixer":
+                                   __fixer_fs_git_proj_download_method},
+                                  {"seq_num": 1, "fixer":
+                                   __fixer_extract_here})
+
+fs_git_proj_dep_sln.add_method = None
 
 
 class Dependency:
-    def __init__(self):
+    def __init__(self, root_dir=None, third_party_dir=None):
         self.__deps = {}
+        if root_dir is None:
+            self.__root_dir = os.getcwd()
+        if third_party_dir is None:
+            self.__third_party_dir = "thirdParty"
+
+        if not os.path.isdir(self.__third_party_dir):
+            os.mkdir(self.__third_party_dir)
 
     def add(self, dep_info, dep_sln=None):
         if dep_sln is None:
