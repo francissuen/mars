@@ -53,7 +53,7 @@ def __fixer_fs_git_proj_download_method(dep_info):
         subprocess.run(["git", "checkout", "master"])    # TODO checkout master
 
     subprocess.run(["python3", "setup.py"])          # run setup.py
-    shutil.copy("fsCMake/build.py", ".")
+    shutil.copy("cmake_utility/build.py", ".")
     subprocess.run(["python3", 'build.py', "-p"])
 
     dep_info.last_dep_method_ret = os.path.abspath(dep_name + ".tar.xz")
