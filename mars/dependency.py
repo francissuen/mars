@@ -121,15 +121,15 @@ fs_git_proj_dep_sln.add_method = None
 
 
 class Dependency:
-    def __init__(self, root_dir=None, third_party_dir=None):
+    def __init__(self, root_dir=None, external_dir=None):
         self.__deps = {}
         if root_dir is None:
             self.__root_dir = os.getcwd()
-        if third_party_dir is None:
-            self.__third_party_dir = "thirdParty"
+        if external_dir is None:
+            self.__external_dir = "external"
 
-        if not os.path.isdir(self.__third_party_dir):
-            os.mkdir(self.__third_party_dir)
+        if not os.path.isdir(self.__external_dir):
+            os.mkdir(self.__external_dir)
 
     def add(self, dep_info, dep_sln=None):
         if dep_sln is None:
