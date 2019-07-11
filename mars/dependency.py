@@ -2,7 +2,7 @@
 DepInfo: dependency data
 DepMethod: a wrapper of a function with addtional __seq_num member
 DepSolution: a container of DepMethod
-Dependency: map a DepInfo with a specific DepSolution
+Dependency: map a DepInfo to a DepSolution
 """
 from . import downloader
 import tarfile
@@ -67,7 +67,7 @@ def __fixer_extract_here(dep_info):
     if dep_info.dst_path is None:
         dst_dir = os.getcwd()
     else:
-        # treat all dst_path as a dir
+        # always treat dst_path as a dir
         dst_dir = dep_info.dst_path
 
     print(dep_info.dst_path)
