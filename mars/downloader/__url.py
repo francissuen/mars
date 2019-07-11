@@ -42,14 +42,22 @@ def downloader(url, dst_path=None):
     if dst_path is None:
         dst_path = url.split('/')[-1]
     elif dst_path != '':
-        if os.path.isdir(dst_path):
-            dst_path = os.path.join(dst_path, url.split('/')[-1])
+        # make dir if not exists
+        dst_dir = os.path.dirname(dst_path)
+        if dst_dir is None:
+            return None
+        if not os.path.isdir(dst_dir):
+            os.makedirs(dst_dir)
+        filename = os.path.basename(dst_path)
+        if filename is None:
+            filename = url.split('/')[-1]
+            dst_path = os.path.join(dst_dir, filename)
     else:
         return None
 
     if dst_path is None or dst_path == '':
         return None
-        
+
     # open url
     with urllib.request.urlopen(url) as response:
         # info of file

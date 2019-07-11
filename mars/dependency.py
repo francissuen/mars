@@ -59,21 +59,21 @@ def __fixer_fs_git_proj_download_method(dep_info):
     dep_info.last_dep_method_ret = os.path.abspath(dep_name + ".tar.xz")
     os.chdir(old_cwd)
 
-    
+
 def __fixer_extract_here(dep_info):
     tar_file_path = dep_info.last_dep_method_ret
     if tar_file_path is None:
         raise
     if dep_info.dst_path is None:
-        dep_info.dst_path = os.getcwd()
-        print(os.getcwd())
-    if os.path.isdir(dep_info.dst_path):
-        dst_dir = dep_info.dst_path
+        dst_dir = os.getcwd()
     else:
-        dst_dir = os.path.dirname(dep_info.dst_path)
-    if dst_dir is None:
-        raise
-    
+        # treat all dst_path as a dir
+        dst_dir = dep_info.dst_path
+
+    print(dep_info.dst_path)
+    if not os.path.isdir(dst_dir):
+        os.makedirs(dst_dir)
+
     if tarfile.is_tarfile(tar_file_path):
         with tarfile.open(tar_file_path) as f:
             old_cwd = os.getcwd()
@@ -121,15 +121,10 @@ fs_git_proj_dep_sln.add_method = None
 
 
 class Dependency:
-    def __init__(self, root_dir=None, external_dir=None):
+    def __init__(self, root_dir=None):
         self.__deps = {}
         if root_dir is None:
             self.__root_dir = os.getcwd()
-        if external_dir is None:
-            self.__external_dir = "external"
-
-        if not os.path.isdir(self.__external_dir):
-            os.mkdir(self.__external_dir)
 
     def add(self, dep_info, dep_sln=None):
         if dep_sln is None:
