@@ -5,8 +5,8 @@ with open("README.md", "r") as f:
 
 setuptools.setup(name="mars",
                  version="0.0.0",
-                 author="Francis Suen",
-                 author_email="francissuen@outlook.com",
+                 author="Francis Sun",
+                 author_email="francisjsun@outlook.com",
                  description="A python utils package.",
                  long_description=long_description,
                  long_description_content_type="text/markdown",
