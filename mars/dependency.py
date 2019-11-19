@@ -1,5 +1,8 @@
 """
-DepInfo: dependency data
+DepInfo: dependency data (NOTE when src_path is a git repository address, then
+src_path is composited with two parts, which are repository address and branch
+name, sperated by a whitespace. If the 2nd part is elided then the default
+branch name "master" will be used.)
 DepMethod: a wrapper of a function with addtional __seq_num member
 DepSolution: a container of DepMethod
 Dependency: map a DepInfo to a DepSolution
@@ -39,18 +42,27 @@ def __fixer_fs_git_proj_download_method(dep_info):
         os.mkdir("dep_tmp")
     os.chdir("dep_tmp")
 
-    dep_name = dep_info.src_path.split('/')[-1].split('.')[0]
+    src_info = dep_info.src_path.split(' ')
+    src_path = src_info[0]
+    src_branch = "master"
+    if len(src_info) > 1:
+        src_branch = src_info[1]
+
+    dep_name = src_path.split('/')[-1].split('.')[0]
     if dep_name is None or dep_name == '':
         raise
     if os.path.isdir(dep_name):
         os.chdir(dep_name)  # cd to target dir
-        # git update local repository
-        subprocess.run(["git", "pull", "origin", "master"])
+        # first checkout src_branch
+        subprocess.run(["git", "checkout", src_branch])
+        # update local repository
+        subprocess.run(["git", "pull", "origin", src_branch])
     else:
         # clone git repository
-        subprocess.run(["git", "clone", dep_info.src_path])
+        subprocess.run(["git", "clone", src_path])
         os.chdir(dep_name)
-        subprocess.run(["git", "checkout", "master"])    # TODO checkout master
+        subprocess.run(["git", "checkout", src_branch]
+                       )    # TODO checkout src_branch
 
     subprocess.run(["python3", "setup.py"])          # run setup.py
     shutil.copy("cmake_utility/build.py", ".")
