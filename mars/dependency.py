@@ -18,7 +18,7 @@ from . import logger
 class DepInfo:
     def __init__(self, dep_info):
         self.src_path = dep_info["src_path"]
-        self.dst_path = dep_info.get("dst_path", None)
+        self.dst_dir = dep_info.get("dst_dir", None)
         self.seq_num = dep_info.get("seq_num", 0)
         self.last_dep_method_ret = None
 
@@ -28,7 +28,7 @@ class DepInfo:
 
 def __fixer_download(dep_info):
     d = downloader.Downloader(dep_info.src_path,
-                              dep_info.dst_path)
+                              dep_info.dst_dir)
     retFile = d.start()
     lg = logger.Logger()
     lg.log("dependency @name: {0} has been downloaded."
@@ -64,25 +64,43 @@ def __fixer_fs_git_proj_download_method(dep_info):
         subprocess.run(["git", "checkout", src_branch]
                        )    # TODO checkout src_branch
 
-    subprocess.run(["python3", "setup.py"])          # run setup.py
-    shutil.copy("cmake_utility/build.py", ".")
-    subprocess.run(["python3", 'build.py', "-p"])
+    if os.path.isfile("setup.py"):
+        subprocess.run(["python3", "setup.py"])          # run setup.py
 
-    dep_info.last_dep_method_ret = os.path.abspath(dep_name + ".tar.xz")
+    if os.path.isfile("vesta/build.py"):
+        # build a pkg tar file
+        shutil.copy("vesta/build.py", ".")
+        subprocess.run(["python3", 'build.py', "-p"])
+
+        # set last_dep_method_ret for next step
+        dep_info.last_dep_method_ret = os.path.abspath(dep_name + ".tar.xz")
+    else:
+        # copy this repository to dep_info.dst_dir
+        if dep_info.dst_dir is None:
+            dst_dir = old_cwd
+        else:
+            dst_dir = dep_info.dst_dir
+
+        # append dep_name to dst_dir
+        dst_dir = os.path.join(dst_dir, dep_name)    
+        # rm dst_dir if it exists
+        if os.path.isdir(dst_dir):
+            shutil.rmtree(dst_dir)
+        # copy
+        shutil.copytree(".", dst_dir)
+
     os.chdir(old_cwd)
 
 
 def __fixer_extract_here(dep_info):
     tar_file_path = dep_info.last_dep_method_ret
     if tar_file_path is None:
-        raise
-    if dep_info.dst_path is None:
+        return
+    if dep_info.dst_dir is None:
         dst_dir = os.getcwd()
     else:
-        # always treat dst_path as a dir
-        dst_dir = dep_info.dst_path
+        dst_dir = dep_info.dst_dir
 
-    print(dep_info.dst_path)
     if not os.path.isdir(dst_dir):
         os.makedirs(dst_dir)
 
