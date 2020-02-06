@@ -6,7 +6,7 @@ import os.path
 from .. import logger
 
 
-def fancy_bytes_format(size_in_b):
+def _fancy_bytes_format(size_in_b):
     if not isinstance(size_in_b, numbers.Number):
         return
     KB = 1024
@@ -25,17 +25,8 @@ def fancy_bytes_format(size_in_b):
     return "{0:06.2f} {1}".format(scale, unit)
 
 
-def rm_url_trash_characters(raw_url):
-    trash_characters = "\n "
-    ret = ""
-    for c in raw_url:
-        if trash_characters.count(c) == 0:
-            ret += c
-    return ret
-
-
 def downloader(url, dst_path=None):
-    url = rm_url_trash_characters(url)
+    url = url.strip()
     if len(url) == 0:
         return None
 
@@ -64,7 +55,7 @@ def downloader(url, dst_path=None):
         content_len = int(response.getheader("Content-Length"))
         log = logger.Logger()
         log.log("file @name: {0}, @size: {1}".format(
-            dst_path, fancy_bytes_format(content_len)))
+            dst_path, _fancy_bytes_format(content_len)))
         # download procedure
         sizeOfWritten = 0
         tmp_file_name = dst_path + ".tmp"
@@ -75,7 +66,7 @@ def downloader(url, dst_path=None):
                 sizeOfWritten += len(data)
                 f.write(data)
                 sys.stdout.write("@size: {0}\r"
-                                 .format(fancy_bytes_format(sizeOfWritten)))
+                                 .format(_fancy_bytes_format(sizeOfWritten)))
                 sys.stdout.flush()
 
             f.flush()
@@ -85,16 +76,3 @@ def downloader(url, dst_path=None):
             os.rename(tmp_file_name, dst_path)
             sys.stdout.flush()
             return dst_path
-
-
-# usage
-# url = """\
-# http://mirrors.us.kernel.org/ubuntu-releases/18.04.2/ubuntu-18.04.2-live-server-amd64.iso
-# """
-# d = Downloader(url)
-
-# d.start()
-
-# d = DownloaderAsync(url)
-# d.start()
-# d.join()

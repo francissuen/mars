@@ -1,15 +1,27 @@
-from . import __url
+# usage
+# url = """\
+# http://mirrors.us.kernel.org/ubuntu-releases/18.04.2/ubuntu-18.04.2-live-server-amd64.iso
+# """
+# d = Downloader(url)
+#
+# d.start()
+#
+# d = DownloaderAsync(url)
+# d.start()
+# d.join()
+
+from . import url
 import threading
 
 
-def pick_downloader(src):
+def _pick_downloader(src):
     # TODO
-    return __url.downloader
+    return url.downloader
 
 
 class Downloader:
     def __init__(self, src_path, dst_path=None):
-        self.__downloader = pick_downloader(src_path)
+        self.__downloader = _pick_downloader(src_path)
         self.__src_path = src_path
         self.__dst_path = dst_path
 
