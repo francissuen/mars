@@ -63,16 +63,16 @@ def _fixer_fs_git_proj_download_method(dep_info):
     if os.path.isdir(dep_name):
         os.chdir(dep_name)  # cd to target dir
         # first checkout rev
-        subprocess.run(["git", "checkout", rev])
+        subprocess.run(["git", "fetch", "origin", rev])
         # update local repository
-        subprocess.run(["git", "pull", "origin", rev])
+        subprocess.run(["git", "reset", "--hard", "origin/" + rev])
     else:
         # clone git repository
         print(src_path)
         subprocess.run(["git", "clone", src_path])
         os.chdir(dep_name)
         subprocess.run(["git", "checkout", rev]
-                       )    # TODO checkout rev
+                       )
 
     if os.path.isfile("setup.py"):
         subprocess.run(["python3", "setup.py"])          # run setup.py
