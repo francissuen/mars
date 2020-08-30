@@ -3,7 +3,10 @@ import sys
 import numbers
 import os
 import os.path
-from .. import logger
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 
 def _fancy_bytes_format(size_in_b):
@@ -53,8 +56,7 @@ def downloader(url, dst_path=None):
     with urllib.request.urlopen(url) as response:
         # info of file
         content_len = int(response.getheader("Content-Length"))
-        log = logger.Logger()
-        log.log("file @name: {0}, @size: {1}".format(
+        logger.info("file @name: {0}, @size: {1}".format(
             dst_path, _fancy_bytes_format(content_len)))
         # download procedure
         sizeOfWritten = 0
