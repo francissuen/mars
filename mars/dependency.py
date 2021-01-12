@@ -107,7 +107,8 @@ def _fixer_fs_git_proj_download_method(dep_info):
         os.chdir(dep_name)  # cd to target dir
         if not args.dirty:  # want a clean version
             if not args.local:  # want update from remote
-                subprocess.run(["git", "fetch", "origin", rev])
+                subprocess.run(["git", "fetch", "-f", "origin",
+                                "{0}:origin/{0}".format(rev)])
             subprocess.run(["git", "reset", "--hard", "origin/" + rev])
     else:
         # clone git repository
