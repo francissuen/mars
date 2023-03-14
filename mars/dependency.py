@@ -59,13 +59,9 @@ def _fixer_download(dep_info):
 
 
 def _process_git_url(url):
-    src_info = url.split('@')
+    REV_INDICATOR = '?'
+    src_info = url.split(REV_INDICATOR)
     src_path = src_info[0]
-    # TODO add support for ssh url
-    if src_path == 'git':
-        raise RuntimeError(
-            "Unsupported ssh url form @src_path: " +
-            url)
     if len(src_info) > 1:
         rev = src_info[1]
     else:
@@ -108,7 +104,7 @@ def _fixer_fs_git_proj_download_method(dep_info):
         if not args.dirty:  # want a clean version
             if not args.local:  # want update from remote
                 subprocess.run(["git", "fetch", "-f", "origin",
-                                "{0}:origin/{0}".format(rev)])
+                                "{0}:{0}".format(rev)])
             subprocess.run(["git", "reset", "--hard", "origin/" + rev])
     else:
         # clone git repository
