@@ -12,6 +12,8 @@ Dependency: map a DepInfo to a DepSolution
 from . import downloader
 import tarfile
 import os
+import sys
+import stat
 import subprocess
 import shutil
 import logging
@@ -104,7 +106,7 @@ def _fixer_fs_git_proj_download_method(dep_info):
         if not args.dirty:  # want a clean version
             if not args.local:  # want update from remote
                 subprocess.run(["git", "fetch", "-f", "origin",
-                                "{0}:{0}".format(rev)])
+                                "{0}".format(rev)])
             subprocess.run(["git", "reset", "--hard", "origin/" + rev])
     else:
         # clone git repository
@@ -127,7 +129,7 @@ def _fixer_fs_git_proj_download_method(dep_info):
     if os.path.isfile("vesta/build.py"):
         # build a pkg tar file
         shutil.copy("vesta/build.py", ".")
-        subprocess.run(["python3", 'build.py', "-p"])
+        subprocess.run([sys.executable, 'build.py', "-p"])
 
         # set last_dep_method_ret for next step
         dep_info.last_dep_method_ret = os.path.abspath(dep_name + ".tar.xz")
@@ -141,8 +143,11 @@ def _fixer_fs_git_proj_download_method(dep_info):
 
 def _fixer_copy(dep_info):
     # rm dst_dir if it exists
+    def rmtree_onerror(func, path, excinfo):
+        os.chmod(path, stat.S_IWUSR)
+        func(path)
     if os.path.isdir(dep_info.dst_dir):
-        shutil.rmtree(dep_info.dst_dir)
+        shutil.rmtree(dep_info.dst_dir, onerror=rmtree_onerror)
     # copy
     shutil.copytree(dep_info.last_dep_method_ret, dep_info.dst_dir)
 
