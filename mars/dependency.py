@@ -2,9 +2,7 @@
 
 """
 DepInfo: dependency data , src_path supports git repository address which
-may have a form repository_addr[@revision], dst_dir is relative to cwd
-(NOTE! only src_path supports http url for now,
-e.g. https://github.com/a/b.git@master)
+may have a form repository_addr[?revision], dst_dir is relative to cwd
 DepMethod: a wrapper of a function with addtional __seq_num member
 DepSolution: a container of DepMethod
 Dependency: map a DepInfo to a DepSolution
@@ -23,10 +21,12 @@ import argparse
 logger = logging.getLogger(__name__)
 
 arg_parser = argparse.ArgumentParser(description=__doc__)
-arg_parser.add_argument("-l", "--local", action="store_true", dest="local",
-                        help="Use local repository")
-arg_parser.add_argument("-d", "--dirty", action="store_true", dest="dirty",
-                        help="Use dirty local")
+arg_parser.add_argument(
+    "-l", "--local", action="store_true", dest="local", help="Use local repository"
+)
+arg_parser.add_argument(
+    "-d", "--dirty", action="store_true", dest="dirty", help="Use dirty local"
+)
 args = arg_parser.parse_args()
 
 
@@ -44,16 +44,15 @@ class DepInfo:
 
     def __str__(self):
         return "{{ src_path: {}, dst_dir: {}, seq_num: {}}}".format(
-            self.src_path, self.dst_dir, self.seq_num)
+            self.src_path, self.dst_dir, self.seq_num
+        )
 
 
 def _fixer_download(dep_info):
     if dep_info.cache is None:
-        d = downloader.Downloader(dep_info.src_path,
-                                  dep_info.dst_dir)
+        d = downloader.Downloader(dep_info.src_path, dep_info.dst_dir)
         ret_file = d.start()
-        logger.info("dependency @name: {0} has been downloaded."
-                    .format(ret_file))
+        logger.info("dependency @name: {0} has been downloaded.".format(ret_file))
         dep_info.last_dep_method_ret = ret_file
         dep_info.dst_abs_path = os.path.abspath(ret_file)
     else:
@@ -61,20 +60,17 @@ def _fixer_download(dep_info):
 
 
 def _process_git_url(url):
-    REV_INDICATOR = '?'
+    REV_INDICATOR = "?"
     src_info = url.split(REV_INDICATOR)
     src_path = src_info[0]
     if len(src_info) > 1:
         rev = src_info[1]
     else:
-        raise RuntimeError(
-            "No rev was found in @src_path: " +
-            url)
+        raise RuntimeError("No rev was found in @src_path: " + url)
 
-    dep_name = src_path.split('/')[-1].split('.')[0]
-    if dep_name is None or dep_name == '':
-        raise RuntimeError("dep_name is either None or empty @src_path: " +
-                           src_path)
+    dep_name = src_path.split("/")[-1].split(".")[0]
+    if dep_name is None or dep_name == "":
+        raise RuntimeError("dep_name is either None or empty @src_path: " + src_path)
     return src_path, rev, dep_name
 
 
@@ -105,31 +101,30 @@ def _fixer_fs_git_proj_download_method(dep_info):
         os.chdir(dep_name)  # cd to target dir
         if not args.dirty:  # want a clean version
             if not args.local:  # want update from remote
-                subprocess.run(["git", "fetch", "-f", "origin",
-                                "{0}".format(rev)])
+                subprocess.run(["git", "fetch", "-f", "origin", "{0}".format(rev)])
             subprocess.run(["git", "reset", "--hard", "origin/" + rev])
     else:
         # clone git repository
-        subprocess.run(["git", "clone", "-b", rev, "--single-branch",
-                        src_path])
+        subprocess.run(["git", "clone", "-b", rev, "--single-branch", src_path])
         os.chdir(dep_name)
 
     if os.path.isfile("setup.py"):
         os.sys.path.insert(0, os.getcwd())
         # if setup.py has been imported, then rm from sys.modules temporarily
-        old_setup_module = os.sys.modules.pop('setup', None)
+        old_setup_module = os.sys.modules.pop("setup", None)
 
         import setup as current_set_up
+
         current_set_up.main()
 
         # set old setup.py back into sys.modules
         if old_setup_module is not None:
-            os.sys.modules['setup'] = old_setup_module
+            os.sys.modules["setup"] = old_setup_module
 
     if os.path.isfile("vesta/build.py"):
         # build a pkg tar file
         shutil.copy("vesta/build.py", ".")
-        subprocess.run([sys.executable, 'build.py', "-p"])
+        subprocess.run([sys.executable, "build.py", "-p"])
 
         # set last_dep_method_ret for next step
         dep_info.last_dep_method_ret = os.path.abspath(dep_name + ".tar.xz")
@@ -146,6 +141,7 @@ def _fixer_copy(dep_info):
     def rmtree_onerror(func, path, excinfo):
         os.chmod(path, stat.S_IWUSR)
         func(path)
+
     if os.path.isdir(dep_info.dst_dir):
         shutil.rmtree(dep_info.dst_dir, onerror=rmtree_onerror)
     # copy
@@ -170,9 +166,12 @@ def _fixer_extract(dep_info):
             os.chdir(dst_dir)
             f.extractall()
             os.chdir(old_cwd)
-            logger.info("""\
-dependency @name: {0} has been extracted into @dst_dir: {1}."""
-                        .format(tar_file_path, dst_dir))
+            logger.info(
+                """\
+dependency @name: {0} has been extracted into @dst_dir: {1}.""".format(
+                    tar_file_path, dst_dir
+                )
+            )
     else:
         raise
 
@@ -196,20 +195,21 @@ class DepSolution:
         self.__dep_methods.append(dep_method)
 
 
-default_dep_sln = DepSolution({"seq_num": 0, "fixer": _fixer_download},
-                              {"seq_num": 1, "fixer": _fixer_extract})
+default_dep_sln = DepSolution(
+    {"seq_num": 0, "fixer": _fixer_download}, {"seq_num": 1, "fixer": _fixer_extract}
+)
 
 default_dep_sln.add_method = None  # disable further adding method
 
-fs_git_proj_dep_sln = DepSolution({"seq_num": 0, "fixer":
-                                   _fixer_fs_git_proj_download_method},
-                                  {"seq_num": 1, "fixer":
-                                   _fixer_extract})
+fs_git_proj_dep_sln = DepSolution(
+    {"seq_num": 0, "fixer": _fixer_fs_git_proj_download_method},
+    {"seq_num": 1, "fixer": _fixer_extract},
+)
 
-fs_trivial_git_proj_dep_sln = DepSolution({"seq_num": 0, "fixer":
-                                           _fixer_fs_git_proj_download_method},
-                                          {"seq_num": 1, "fixer":
-                                           _fixer_copy})
+fs_trivial_git_proj_dep_sln = DepSolution(
+    {"seq_num": 0, "fixer": _fixer_fs_git_proj_download_method},
+    {"seq_num": 1, "fixer": _fixer_copy},
+)
 
 fs_git_proj_dep_sln.add_method = None
 
@@ -239,11 +239,11 @@ class Dependency:
 
             # if has been cached
             if current_src_path in Dependency.dep_info_cache:
-                current_dep_info.cache = Dependency\
-                    .dep_info_cache[current_src_path]
+                current_dep_info.cache = Dependency.dep_info_cache[current_src_path]
 
             kv[1](current_dep_info)
 
             if current_src_path not in Dependency.dep_info_cache:
-                Dependency.dep_info_cache[current_src_path] = current_dep_info\
-                    .dst_abs_path
+                Dependency.dep_info_cache[current_src_path] = (
+                    current_dep_info.dst_abs_path
+                )
